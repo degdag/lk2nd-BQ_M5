@@ -83,6 +83,8 @@
 #include <menu_keys_detect.h>
 #include <display_menu.h>
 
+#include "aboot.h"
+
 extern  bool target_use_signed_kernel(void);
 extern void platform_uninit(void);
 extern void target_uninit(void);
@@ -3843,7 +3845,7 @@ void aboot_fastboot_register_commands(void)
 #endif
 }
 
-void aboot_init(const struct app_descriptor *app)
+bool aboot_start()
 {
 	unsigned reboot_mode = 0;
 	bool boot_into_fastboot = false;
@@ -3947,6 +3949,7 @@ void aboot_init(const struct app_descriptor *app)
 #endif
 #endif
 
+#ifndef WITH_APP_REBOOT
 normal_boot:
 	if (!boot_into_fastboot)
 	{
@@ -3980,7 +3983,13 @@ normal_boot:
 		dprintf(CRITICAL, "ERROR: Could not do normal boot. Reverting "
 			"to fastboot mode.\n");
 	}
+#endif
 
+	return boot_into_fastboot;
+}
+
+void fastboot_start(void)
+{
 	/* We are here means regular boot did not happen. Start fastboot. */
 
 	/* register aboot specific fastboot commands */
@@ -3992,6 +4001,12 @@ normal_boot:
 
 	/* initialize and start fastboot */
 	fastboot_init(target_get_scratch_address(), target_get_max_flash_size());
+}
+
+void aboot_init(const struct app_descriptor *app)
+{
+	aboot_start();
+	fastboot_start();
 #if FBCON_DISPLAY_MSG
 	display_fastboot_menu();
 #endif
@@ -4028,6 +4043,8 @@ static int aboot_save_boot_hash_mmc(uint32_t image_addr, uint32_t image_size)
 	return 0;
 }
 
+#ifndef WITH_APP_REBOOT
 APP_START(aboot)
 	.init = aboot_init,
 APP_END
+#endif

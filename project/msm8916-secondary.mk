@@ -4,6 +4,9 @@ LOCAL_DIR := $(GET_LOCAL_DIR)
 
 OUTBOOTIMG := $(BUILDDIR)/lk2nd.img
 
+# Remove this to get the old stupid aboot
+MODULES += app/reboot
+
 # Enable fastboot display menu
 ENABLE_FBCON_DISPLAY_MSG := 1
 
