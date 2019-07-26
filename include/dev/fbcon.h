@@ -37,6 +37,9 @@
 #define LOGO_IMG_MAGIC_SIZE sizeof(LOGO_IMG_MAGIC) - 1
 #define LOGO_IMG_HEADER_SIZE 512
 
+#define FONT_WIDTH		5
+#define FONT_HEIGHT		12
+
 enum fbcon_msg_type {
 	/* type for menu */
 	FBCON_COMMON_MSG = 0,
@@ -89,13 +92,17 @@ struct fbcon_config {
 void fbcon_setup(struct fbcon_config *cfg);
 void fbcon_putc(char c);
 void fbcon_clear(void);
+void fbcon_flush(void);
 struct fbcon_config* fbcon_display(void);
 void fbcon_extract_to_screen(logo_img_header *header, void* address);
 void fbcon_putc_factor(char c, int type, unsigned scale_factor);
 void fbcon_draw_msg_background(unsigned y_start, unsigned y_end,
 	uint32_t paint, int update);
+void fbcon_drawchar(char *pixels, uint32_t paint, char c, unsigned scale_factor);
 void fbcon_draw_line(uint32_t type);
 uint32_t fbcon_get_current_line(void);
 uint32_t fbcon_get_current_bg(void);
 uint32_t fbcon_get_max_x(void);
+uint32_t fbcon_get_width(void);
+uint32_t fbcon_get_height(void);
 #endif /* __DEV_FBCON_H */

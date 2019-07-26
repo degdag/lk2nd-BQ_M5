@@ -49,7 +49,7 @@ struct fb_color {
 	uint32_t bg;
 };
 
-static struct fbcon_config *config = NULL;
+struct fbcon_config *config = NULL;
 
 #define RGB565_BLACK		0x0000
 #define RGB565_WHITE		0xffff
@@ -70,9 +70,6 @@ static struct fbcon_config *config = NULL;
 #define RGB888_ORANGE           0xffa500
 #define RGB888_RED              0xff0000
 #define RGB888_GREEN            0x00ff00
-
-#define FONT_WIDTH		5
-#define FONT_HEIGHT		12
 
 #define SCALE_FACTOR		2
 
@@ -172,6 +169,11 @@ static void fbcon_drawglyph(char *pixels, uint32_t paint, unsigned stride,
 
 }
 
+void fbcon_drawchar(char *pixels, uint32_t paint, char c, unsigned scale_factor)
+{
+    fbcon_drawglyph(pixels, paint, config->stride, (config->bpp / 8), font5x12 + (c - 32) * 2, scale_factor);
+}
+
 void fbcon_draw_msg_background(unsigned y_start, unsigned y_end,
 	uint32_t old_paint, int update)
 {
@@ -210,7 +212,7 @@ void fbcon_draw_msg_background(unsigned y_start, unsigned y_end,
 	}
 }
 
-static void fbcon_flush(void)
+void fbcon_flush(void)
 {
 	unsigned total_x, total_y;
 	unsigned bytes_per_bpp;
@@ -370,6 +372,16 @@ uint32_t fbcon_get_max_x(void)
 uint32_t fbcon_get_current_bg(void)
 {
 	return BGCOLOR;
+}
+
+uint32_t fbcon_get_width(void)
+{
+	return config->width;
+}
+
+uint32_t fbcon_get_height(void)
+{
+	return config->height;
 }
 
 void fbcon_setup(struct fbcon_config *_config)
