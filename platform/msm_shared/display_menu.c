@@ -40,7 +40,7 @@
 #include <smem.h>
 #include <target.h>
 #include <sys/types.h>
-#include <../../../app/aboot/devinfo.h>
+#include <../../../app/reboot/aboot/devinfo.h>
 
 static const char *unlock_menu_common_msg = "If you unlock the bootloader, "\
 				"you will be able to install "\

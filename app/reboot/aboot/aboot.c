@@ -30,7 +30,6 @@
  *
  */
 
-#include <app.h>
 #include <debug.h>
 #include <arch/arm.h>
 #include <string.h>
@@ -83,6 +82,9 @@
 #include <menu_keys_detect.h>
 #include <display_menu.h>
 
+#include <lib/bio.h>
+#include <lib/fs.h>
+
 extern  bool target_use_signed_kernel(void);
 extern void platform_uninit(void);
 extern void target_uninit(void);
@@ -94,11 +96,11 @@ void write_device_info_mmc(device_info *dev);
 void write_device_info_flash(device_info *dev);
 static int aboot_save_boot_hash_mmc(uint32_t image_addr, uint32_t image_size);
 extern void display_fbcon_message(char *str);
-static int aboot_frp_unlock(char *pname, void *data, unsigned sz);
+static int aboot_frp_unlock(char *pname, void *data, unsigned int sz);
 static inline uint64_t validate_partition_size();
 bool pwr_key_is_pressed = false;
-unsigned bytes_to_round_page = 0;
-unsigned rounded_size = 0;
+unsigned int bytes_to_round_page = 0;
+unsigned int rounded_size = 0;
 
 /* fastboot command function pointer */
 typedef void (*fastboot_cmd_fn) (const char *, void *, unsigned);
@@ -186,10 +188,10 @@ struct verified_boot_state_name vbsn[] =
 #endif
 /*As per spec delay wait time before shutdown in Red state*/
 #define DELAY_WAIT 30000
-static unsigned page_size = 0;
-static unsigned page_mask = 0;
-static unsigned mmc_blocksize = 0;
-static unsigned mmc_blocksize_mask = 0;
+static unsigned int page_size = 0;
+static unsigned int page_mask = 0;
+static unsigned int mmc_blocksize = 0;
+static unsigned int mmc_blocksize_mask = 0;
 static char ffbm_mode_string[FFBM_MODE_BUF_SIZE];
 static bool boot_into_ffbm;
 static char target_boot_params[64];
@@ -227,9 +229,9 @@ static const char *critical_flash_allowed_ptn[] = {
 struct atag_ptbl_entry
 {
 	char name[16];
-	unsigned offset;
-	unsigned size;
-	unsigned flags;
+	unsigned int offset;
+	unsigned int size;
+	unsigned int flags;
 };
 
 /*
@@ -283,7 +285,7 @@ static void update_ker_tags_rdisk_addr(struct boot_img_hdr *hdr, bool is_arm64)
 #endif
 }
 
-static void ptentry_to_tag(unsigned **ptr, struct ptentry *ptn)
+static void ptentry_to_tag(unsigned int **ptr, struct ptentry *ptn)
 {
 	struct atag_ptbl_entry atag_ptn;
 
@@ -622,7 +624,7 @@ unsigned char *update_cmdline(const char* cmdline)
 	return update_cmdline0(cmdline);
 }
 
-unsigned *atag_core(unsigned *ptr)
+unsigned int *atag_core(unsigned int *ptr)
 {
 	/* CORE */
 	*ptr++ = 2;
@@ -632,8 +634,8 @@ unsigned *atag_core(unsigned *ptr)
 
 }
 
-unsigned *atag_ramdisk(unsigned *ptr, void *ramdisk,
-							   unsigned ramdisk_size)
+unsigned int *atag_ramdisk(unsigned int *ptr, void *ramdisk,
+							   unsigned int ramdisk_size)
 {
 	if (ramdisk_size) {
 		*ptr++ = 4;
@@ -645,7 +647,7 @@ unsigned *atag_ramdisk(unsigned *ptr, void *ramdisk,
 	return ptr;
 }
 
-unsigned *atag_ptable(unsigned **ptr_addr)
+unsigned int *atag_ptable(unsigned int **ptr_addr)
 {
 	int i;
 	struct ptable *ptable;
@@ -661,7 +663,7 @@ unsigned *atag_ptable(unsigned **ptr_addr)
 	return (*ptr_addr);
 }
 
-unsigned *atag_cmdline(unsigned *ptr, const char *cmdline)
+unsigned int *atag_cmdline(unsigned int *ptr, const char *cmdline)
 {
 	int cmdline_length = 0;
 	int n;
@@ -679,7 +681,7 @@ unsigned *atag_cmdline(unsigned *ptr, const char *cmdline)
 	return ptr;
 }
 
-unsigned *atag_end(unsigned *ptr)
+unsigned int *atag_end(unsigned int *ptr)
 {
 	/* END */
 	*ptr++ = 0;
@@ -688,10 +690,10 @@ unsigned *atag_end(unsigned *ptr)
 	return ptr;
 }
 
-void generate_atags(unsigned *ptr, const char *cmdline,
-                    void *ramdisk, unsigned ramdisk_size)
+void generate_atags(unsigned int *ptr, const char *cmdline,
+                    void *ramdisk, unsigned int ramdisk_size)
 {
-	unsigned *orig_ptr = ptr;
+	unsigned int *orig_ptr = ptr;
 	ptr = atag_core(ptr);
 	ptr = atag_ramdisk(ptr, ramdisk, ramdisk_size);
 	ptr = target_atag_mem(ptr);
@@ -702,7 +704,7 @@ void generate_atags(unsigned *ptr, const char *cmdline,
 	}
 
 	/*
-	 * Atags size filled till + cmdline size + 1 unsigned for 4-byte boundary + 4 unsigned
+	 * Atags size filled till + cmdline size + 1 unsigned int for 4-byte boundary + 4 unsigned
 	 * for atag identifier in atag_cmdline and atag_end should be with in MAX_TAGS_SIZE bytes
 	 */
 	if (((ptr - orig_ptr) + strlen(cmdline) + 5 * sizeof(unsigned)) <  MAX_TAGS_SIZE) {
@@ -716,9 +718,9 @@ void generate_atags(unsigned *ptr, const char *cmdline,
 }
 
 /* todo: give lk strtoul and nuke this */
-static unsigned hex2unsigned(const char *x)
+static unsigned int hex2unsigned(const char *x)
 {
-    unsigned n = 0;
+    unsigned int n = 0;
 
     while(*x) {
         switch(*x) {
@@ -770,9 +772,9 @@ unsigned char* generate_mac_address()
 }
 
 typedef void entry_func_ptr(unsigned, unsigned, unsigned*);
-void boot_linux(void *kernel, unsigned *tags,
-		const char *cmdline, unsigned machtype,
-		void *ramdisk, unsigned ramdisk_size)
+void boot_linux(void *kernel, unsigned int *tags,
+		const char *cmdline, unsigned int machtype,
+		void *ramdisk, unsigned int ramdisk_size)
 {
 	unsigned char *final_cmdline;
 #if DEVICE_TREE
@@ -1084,16 +1086,16 @@ int boot_linux_from_mmc(void)
 {
 	struct boot_img_hdr *hdr = (void*) buf;
 	struct boot_img_hdr *uhdr;
-	unsigned offset = 0;
+	unsigned int offset = 0;
 	int rcode;
 	unsigned long long ptn = 0;
 	int index = INVALID_PTN;
 
 	unsigned char *image_addr = 0;
-	unsigned kernel_actual;
-	unsigned ramdisk_actual;
+	unsigned int kernel_actual;
+	unsigned int ramdisk_actual;
 	unsigned imagesize_actual;
-	unsigned second_actual = 0;
+	unsigned int second_actual = 0;
 
 	unsigned int dtb_size = 0;
 	unsigned int out_len = 0;
@@ -1107,7 +1109,7 @@ int boot_linux_from_mmc(void)
 #if DEVICE_TREE
 	struct dt_table *table;
 	struct dt_entry dt_entry;
-	unsigned dt_table_offset;
+	unsigned int dt_table_offset;
 	uint32_t dt_actual;
 	uint32_t dt_hdr_size;
 	unsigned char *best_match_dt_addr = NULL;
@@ -1473,18 +1475,18 @@ int boot_linux_from_flash(void)
 	struct boot_img_hdr *hdr = (void*) buf;
 	struct ptentry *ptn;
 	struct ptable *ptable;
-	unsigned offset = 0;
+	unsigned int offset = 0;
 
 	unsigned char *image_addr = 0;
-	unsigned kernel_actual;
-	unsigned ramdisk_actual;
+	unsigned int kernel_actual;
+	unsigned int ramdisk_actual;
 	unsigned imagesize_actual;
-	unsigned second_actual = 0;
+	unsigned int second_actual = 0;
 
 #if DEVICE_TREE
 	struct dt_table *table;
 	struct dt_entry dt_entry;
-	unsigned dt_table_offset;
+	unsigned int dt_table_offset;
 	uint32_t dt_actual;
 	uint32_t dt_hdr_size;
 	unsigned int dtb_size =0;
@@ -1883,11 +1885,11 @@ void write_device_info_flash(device_info *dev)
 
 static int read_allow_oem_unlock(device_info *dev)
 {
-	unsigned offset;
+	unsigned int offset;
 	int index;
 	unsigned long long ptn;
 	unsigned long long ptn_size;
-	unsigned blocksize = mmc_get_device_blocksize();
+	unsigned int blocksize = mmc_get_device_blocksize();
 	char buf[blocksize];
 
 	index = partition_get_index(frp_ptns[0]);
@@ -1919,11 +1921,11 @@ static int read_allow_oem_unlock(device_info *dev)
 static int write_allow_oem_unlock(bool allow_unlock)
 {
 #ifndef SAFE_MODE
-	unsigned offset;
+	unsigned int offset;
 	int index;
 	unsigned long long ptn;
 	unsigned long long ptn_size;
-	unsigned blocksize = mmc_get_device_blocksize();
+	unsigned int blocksize = mmc_get_device_blocksize();
 	char buf[blocksize];
 
 	index = partition_get_index(frp_ptns[0]);
@@ -2293,11 +2295,11 @@ int copy_dtb(uint8_t *boot_image_start, unsigned int scratch_offset)
 }
 #endif
 
-void cmd_boot(const char *arg, void *data, unsigned sz)
+void cmd_boot(const char *arg, void *data, unsigned int sz)
 {
-	unsigned kernel_actual;
-	unsigned ramdisk_actual;
-	unsigned second_actual;
+	unsigned int kernel_actual;
+	unsigned int ramdisk_actual;
+	unsigned int second_actual;
 	uint32_t image_actual;
 	uint32_t dt_actual = 0;
 	uint32_t sig_actual = 0;
@@ -2508,7 +2510,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 		   (void*) hdr->ramdisk_addr, hdr->ramdisk_size);
 }
 
-void cmd_erase_nand(const char *arg, void *data, unsigned sz)
+void cmd_erase_nand(const char *arg, void *data, unsigned int sz)
 {
 	struct ptentry *ptn;
 	struct ptable *ptable;
@@ -2533,7 +2535,7 @@ void cmd_erase_nand(const char *arg, void *data, unsigned sz)
 }
 
 
-void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
+void cmd_erase_mmc(const char *arg, void *data, unsigned int sz)
 {
 	BUF_DMA_ALIGN(out, DEFAULT_ERASE_SIZE);
 	unsigned long long ptn = 0;
@@ -2591,7 +2593,7 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
-void cmd_erase(const char *arg, void *data, unsigned sz)
+void cmd_erase(const char *arg, void *data, unsigned int sz)
 {
 #if CHECK_BAT_VOLTAGE
 	if (!target_battery_soc_ok()) {
@@ -2614,7 +2616,7 @@ void cmd_erase(const char *arg, void *data, unsigned sz)
 		cmd_erase_nand(arg, data, sz);
 }
 
-void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
+void cmd_flash_mmc_img(const char *arg, void *data, unsigned int sz)
 {
 	unsigned long long ptn = 0;
 	unsigned long long size = 0;
@@ -2710,7 +2712,7 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 	return;
 }
 
-void cmd_flash_meta_img(const char *arg, void *data, unsigned sz)
+void cmd_flash_meta_img(const char *arg, void *data, unsigned int sz)
 {
 	int i, images;
 	meta_header_t *meta_header;
@@ -2786,7 +2788,7 @@ void cmd_flash_meta_img(const char *arg, void *data, unsigned sz)
 	return;
 }
 
-void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
+void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned int sz)
 {
 	unsigned int chunk;
 	unsigned int chunk_data_sz;
@@ -3052,7 +3054,7 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	return;
 }
 
-void cmd_flash_mmc(const char *arg, void *data, unsigned sz)
+void cmd_flash_mmc(const char *arg, void *data, unsigned int sz)
 {
 	sparse_header_t *sparse_header;
 	meta_header_t *meta_header;
@@ -3172,11 +3174,11 @@ void cmd_flash_mmc(const char *arg, void *data, unsigned sz)
 	return;
 }
 
-void cmd_flash_nand(const char *arg, void *data, unsigned sz)
+void cmd_flash_nand(const char *arg, void *data, unsigned int sz)
 {
 	struct ptentry *ptn;
 	struct ptable *ptable;
-	unsigned extra = 0;
+	unsigned int extra = 0;
 	uint64_t partition_size = 0;
 
 	if((uintptr_t)data > (UINT_MAX - sz)) {
@@ -3269,7 +3271,7 @@ static inline uint64_t validate_partition_size(struct ptentry *ptn)
 }
 
 
-void cmd_flash(const char *arg, void *data, unsigned sz)
+void cmd_flash(const char *arg, void *data, unsigned int sz)
 {
 #if CHECK_BAT_VOLTAGE
 	if (!target_battery_soc_ok()) {
@@ -3283,7 +3285,7 @@ void cmd_flash(const char *arg, void *data, unsigned sz)
 		cmd_flash_nand(arg, data, sz);
 }
 
-void cmd_continue(const char *arg, void *data, unsigned sz)
+void cmd_continue(const char *arg, void *data, unsigned int sz)
 {
 	fastboot_okay("");
 	fastboot_stop();
@@ -3302,21 +3304,21 @@ void cmd_continue(const char *arg, void *data, unsigned sz)
 	}
 }
 
-void cmd_reboot(const char *arg, void *data, unsigned sz)
+void cmd_reboot(const char *arg, void *data, unsigned int sz)
 {
 	dprintf(INFO, "rebooting the device\n");
 	fastboot_okay("");
 	reboot_device(0);
 }
 
-void cmd_reboot_bootloader(const char *arg, void *data, unsigned sz)
+void cmd_reboot_bootloader(const char *arg, void *data, unsigned int sz)
 {
 	dprintf(INFO, "rebooting the device\n");
 	fastboot_okay("");
 	reboot_device(FASTBOOT_MODE);
 }
 
-void cmd_oem_enable_charger_screen(const char *arg, void *data, unsigned size)
+void cmd_oem_enable_charger_screen(const char *arg, void *data, unsigned int size)
 {
 	dprintf(INFO, "Enabling charger screen check\n");
 	device.charger_screen_enabled = 1;
@@ -3324,7 +3326,7 @@ void cmd_oem_enable_charger_screen(const char *arg, void *data, unsigned size)
 	fastboot_okay("");
 }
 
-void cmd_oem_disable_charger_screen(const char *arg, void *data, unsigned size)
+void cmd_oem_disable_charger_screen(const char *arg, void *data, unsigned int size)
 {
 	dprintf(INFO, "Disabling charger screen check\n");
 	device.charger_screen_enabled = 0;
@@ -3332,7 +3334,7 @@ void cmd_oem_disable_charger_screen(const char *arg, void *data, unsigned size)
 	fastboot_okay("");
 }
 
-void cmd_oem_off_mode_charger(const char *arg, void *data, unsigned size)
+void cmd_oem_off_mode_charger(const char *arg, void *data, unsigned int size)
 {
 	char *p = NULL;
 	const char *delim = " \t\n\r";
@@ -3359,7 +3361,7 @@ void cmd_oem_off_mode_charger(const char *arg, void *data, unsigned size)
 	fastboot_okay("");
 }
 
-void cmd_oem_select_display_panel(const char *arg, void *data, unsigned size)
+void cmd_oem_select_display_panel(const char *arg, void *data, unsigned int size)
 {
 	dprintf(INFO, "Selecting display panel %s\n", arg);
 	if (arg)
@@ -3369,12 +3371,12 @@ void cmd_oem_select_display_panel(const char *arg, void *data, unsigned size)
 	fastboot_okay("");
 }
 
-void cmd_oem_unlock(const char *arg, void *data, unsigned sz)
+void cmd_oem_unlock(const char *arg, void *data, unsigned int sz)
 {
 	set_device_unlock(UNLOCK, TRUE);
 }
 
-void cmd_oem_unlock_go(const char *arg, void *data, unsigned sz)
+void cmd_oem_unlock_go(const char *arg, void *data, unsigned int sz)
 {
 	if(!device.is_unlocked) {
 		if(!is_allow_unlock) {
@@ -3396,7 +3398,7 @@ void cmd_oem_unlock_go(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
-static int aboot_frp_unlock(char *pname, void *data, unsigned sz)
+static int aboot_frp_unlock(char *pname, void *data, unsigned int sz)
 {
 	int ret=1;
 	bool authentication_success=false;
@@ -3420,12 +3422,12 @@ static int aboot_frp_unlock(char *pname, void *data, unsigned sz)
 	return ret;
 }
 
-void cmd_oem_lock(const char *arg, void *data, unsigned sz)
+void cmd_oem_lock(const char *arg, void *data, unsigned int sz)
 {
 	set_device_unlock(UNLOCK, FALSE);
 }
 
-void cmd_oem_devinfo(const char *arg, void *data, unsigned sz)
+void cmd_oem_devinfo(const char *arg, void *data, unsigned int sz)
 {
 	char response[MAX_RSP_SIZE];
 	snprintf(response, sizeof(response), "\tDevice tampered: %s", (device.is_tampered ? "true" : "false"));
@@ -3443,7 +3445,7 @@ void cmd_oem_devinfo(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
-void cmd_flashing_get_unlock_ability(const char *arg, void *data, unsigned sz)
+void cmd_flashing_get_unlock_ability(const char *arg, void *data, unsigned int sz)
 {
 	char response[MAX_RSP_SIZE];
 	snprintf(response, sizeof(response), "\tget_unlock_ability: %d", is_allow_unlock);
@@ -3451,17 +3453,17 @@ void cmd_flashing_get_unlock_ability(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
-void cmd_flashing_lock_critical(const char *arg, void *data, unsigned sz)
+void cmd_flashing_lock_critical(const char *arg, void *data, unsigned int sz)
 {
 	set_device_unlock(UNLOCK_CRITICAL, FALSE);
 }
 
-void cmd_flashing_unlock_critical(const char *arg, void *data, unsigned sz)
+void cmd_flashing_unlock_critical(const char *arg, void *data, unsigned int sz)
 {
 	set_device_unlock(UNLOCK_CRITICAL, TRUE);
 }
 
-void cmd_preflash(const char *arg, void *data, unsigned sz)
+void cmd_preflash(const char *arg, void *data, unsigned int sz)
 {
 	fastboot_okay("");
 }
@@ -3914,24 +3916,24 @@ static void aboot_parse_fdt(void)
 	}
 }
 
-void aboot_init(const struct app_descriptor *app)
+void start_fastboot(void) {
+	/* register aboot specific fastboot commands */
+	aboot_fastboot_register_commands();
+	fastboot_lk2nd_register_commands();
+
+	/* initialize and start fastboot */
+	fastboot_init(target_get_scratch_address(), target_get_max_flash_size());
+}
+
+bool aboot_init(void)
 {
-	unsigned reboot_mode = 0;
+	unsigned int reboot_mode = 0;
 	bool boot_into_fastboot = false;
 
-	/* Setup page size information for nv storage */
-	if (target_is_emmc_boot())
-	{
-		page_size = mmc_page_size();
-		page_mask = page_size - 1;
-		mmc_blocksize = mmc_get_device_blocksize();
-		mmc_blocksize_mask = mmc_blocksize - 1;
-	}
-	else
-	{
-		page_size = flash_page_size();
-		page_mask = page_size - 1;
-	}
+	page_size = mmc_page_size();
+	page_mask = page_size - 1;
+	mmc_blocksize = mmc_get_device_blocksize();
+	mmc_blocksize_mask = mmc_blocksize - 1;
 
 	ASSERT((MEMBASE + MEMSIZE) > MEMBASE);
 
@@ -3939,12 +3941,10 @@ void aboot_init(const struct app_descriptor *app)
 	read_allow_oem_unlock(&device);
 	aboot_parse_fdt();
 
-	/* Display splash screen if enabled */
-#if DISPLAY_SPLASH_SCREEN
+	/* Display splash screen */
 	dprintf(SPEW, "Display Init: Start\n");
 	target_display_init(device.display_panel);
 	dprintf(SPEW, "Display Init: Done\n");
-#endif
 
 
 	target_serialno((unsigned char *) sn_buf);
@@ -3953,119 +3953,44 @@ void aboot_init(const struct app_descriptor *app)
 	memset(display_panel_buf, '\0', MAX_PANEL_BUF_SIZE);
 
 	/* Check if we should do something other than booting up */
-	if (keys_get_state(KEY_VOLUMEUP) && keys_get_state(KEY_VOLUMEDOWN))
-	{
+	if (keys_get_state(KEY_VOLUMEUP) && keys_get_state(KEY_VOLUMEDOWN)) {
 		dprintf(ALWAYS,"dload mode key sequence detected\n");
-		if (set_download_mode(EMERGENCY_DLOAD))
-		{
+		if (set_download_mode(EMERGENCY_DLOAD)) {
 			dprintf(CRITICAL,"dload mode not supported by target\n");
 		}
-		else
-		{
+		else {
 			reboot_device(DLOAD);
 			dprintf(CRITICAL,"Failed to reboot into dload mode\n");
 		}
 		boot_into_fastboot = true;
 	}
-	if (!boot_into_fastboot)
-	{
+	if (!boot_into_fastboot) {
 		if (keys_get_state(KEY_HOME) || keys_get_state(KEY_VOLUMEUP))
 			boot_into_recovery = 1;
-		if (!boot_into_recovery &&
-			(keys_get_state(KEY_BACK) || keys_get_state(KEY_VOLUMEDOWN)))
+		if (!boot_into_recovery && (keys_get_state(KEY_BACK) || keys_get_state(KEY_VOLUMEDOWN)))
 			boot_into_fastboot = true;
 	}
-	#if NO_KEYPAD_DRIVER
+#if NO_KEYPAD_DRIVER
 	if (fastboot_trigger())
 		boot_into_fastboot = true;
-	#endif
+#endif
 
 #if USE_PON_REBOOT_REG
 	reboot_mode = check_hard_reboot_mode();
 #else
 	reboot_mode = check_reboot_mode();
 #endif
-	if (reboot_mode == RECOVERY_MODE)
-	{
+	if (reboot_mode == RECOVERY_MODE) {
 		boot_into_recovery = 1;
 	}
-	else if(reboot_mode == FASTBOOT_MODE)
-	{
+	else if(reboot_mode == FASTBOOT_MODE) {
 		boot_into_fastboot = true;
 	}
-	else if(reboot_mode == ALARM_BOOT)
-	{
+	else if(reboot_mode == ALARM_BOOT) {
 		boot_reason_alarm = true;
-        }
-#if VERIFIED_BOOT
-#if !VBOOT_MOTA
-        else if(reboot_mode == DM_VERITY_ENFORCING) {
-		device.verity_mode = 1;
-		write_device_info(&device);
-	}
-#if ENABLE_VB_ATTEST
-	else if (reboot_mode == DM_VERITY_EIO)
-#else
-	else if (reboot_mode == DM_VERITY_LOGGING)
-#endif
-	{
-		device.verity_mode = 0;
-		write_device_info(&device);
-	} else if(reboot_mode == DM_VERITY_KEYSCLEAR) {
-		if(send_delete_keys_to_tz())
-			ASSERT(0);
-	}
-#endif
-#endif
-
-normal_boot:
-	if (!boot_into_fastboot)
-	{
-		if (target_is_emmc_boot())
-		{
-			if(emmc_recovery_init())
-				dprintf(ALWAYS,"error in emmc_recovery_init\n");
-			if(target_use_signed_kernel())
-			{
-				if((device.is_unlocked) || (device.is_tampered))
-				{
-				#ifdef TZ_TAMPER_FUSE
-					set_tamper_fuse_cmd();
-				#endif
-				#if USE_PCOM_SECBOOT
-					set_tamper_flag(device.is_tampered);
-				#endif
-				}
-			}
-			boot_linux_from_mmc();
-		}
-		else
-		{
-			recovery_init();
-	#if USE_PCOM_SECBOOT
-		if((device.is_unlocked) || (device.is_tampered))
-			set_tamper_flag(device.is_tampered);
-	#endif
-			boot_linux_from_flash();
-		}
-		dprintf(CRITICAL, "ERROR: Could not do normal boot. Reverting "
-			"to fastboot mode.\n");
 	}
 
-	/* We are here means regular boot did not happen. Start fastboot. */
-
-	/* register aboot specific fastboot commands */
-	aboot_fastboot_register_commands();
-	fastboot_lk2nd_register_commands();
-
-	/* dump partition table for debug info */
-	partition_dump();
-
-	/* initialize and start fastboot */
-	fastboot_init(target_get_scratch_address(), target_get_max_flash_size());
-#if FBCON_DISPLAY_MSG
-	display_fastboot_menu();
-#endif
+	return boot_into_fastboot;
 }
 
 uint32_t get_page_size()
@@ -4098,7 +4023,3 @@ static int aboot_save_boot_hash_mmc(uint32_t image_addr, uint32_t image_size)
 
 	return 0;
 }
-
-APP_START(aboot)
-	.init = aboot_init,
-APP_END

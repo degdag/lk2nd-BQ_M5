@@ -43,8 +43,8 @@
 #include <platform.h>
 #include <reboot.h>
 #include <sys/types.h>
-#include <../../../app/aboot/recovery.h>
-#include <../../../app/aboot/devinfo.h>
+#include <../../../app/reboot/aboot/recovery.h>
+#include <../../../app/reboot/aboot/devinfo.h>
 #include <string.h>
 
 #define KEY_DETECT_FREQUENCY		50
