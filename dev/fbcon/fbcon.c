@@ -105,7 +105,6 @@ static struct fb_color		fb_color_formats_888[] = {
 					[FBCON_GREEN_MSG] = {RGB888_GREEN, RGB888_BLACK},
 					[FBCON_SELECT_MSG_BG_COLOR] = {RGB888_WHITE, RGB888_BLUE}};
 
-
 static void fbcon_drawglyph(char *pixels, uint32_t paint, unsigned stride,
 			    unsigned bpp, unsigned *glyph, unsigned scale_factor)
 {
@@ -210,7 +209,7 @@ void fbcon_draw_msg_background(unsigned y_start, unsigned y_end,
 	}
 }
 
-static void fbcon_flush(void)
+void fbcon_flush(void)
 {
 	unsigned total_x, total_y;
 	unsigned bytes_per_bpp;
@@ -280,8 +279,8 @@ static void fbcon_set_colors(int type)
 	FGCOLOR = fb_color_formats[type].fg;
 }
 
-void fbcon_clear(void)
-{
+void fbcon_clear(void); //too slow, flickers - replaced with faster implementation
+/*{
 	unsigned long i = 0, j = 0;
 	unsigned char *pixels = config->base;
 	unsigned count = config->width * config->height;
@@ -298,7 +297,7 @@ void fbcon_clear(void)
 	}
 	cur_pos.x = 0;
 	cur_pos.y = 0;
-}
+}*/
 
 void fbcon_putc_factor(char c, int type, unsigned scale_factor)
 {
@@ -367,6 +366,16 @@ uint32_t fbcon_get_max_x(void)
 	return max_pos.x;
 }
 
+uint32_t fbcon_get_width(void)
+{
+	return config->width;
+}
+
+uint32_t fbcon_get_height(void)
+{
+	return config->height;
+}
+
 uint32_t fbcon_get_current_bg(void)
 {
 	return BGCOLOR;
@@ -382,9 +391,9 @@ void fbcon_setup(struct fbcon_config *_config)
 	case FB_FORMAT_RGB565:
 		fb_color_formats = fb_color_formats_555;
 		break;
-        case FB_FORMAT_RGB888:
+	case FB_FORMAT_RGB888:
 		fb_color_formats = fb_color_formats_888;
-                break;
+		break;
 	default:
 		dprintf(CRITICAL, "unknown framebuffer pixel format\n");
 		ASSERT(0);
@@ -534,4 +543,87 @@ void display_image_on_screen(void)
 #else
 	display_default_image_on_screen();
 #endif
+}
+
+
+// © 2019 Mis012 - SPDX-License-Identifier: GPL-2.0+
+// from here till the end of file
+
+//gfx functions
+
+void fbcon_clear(void)
+{
+	//we know that BGCOLOR is black, so we can minimize flicker by using memset
+
+	unsigned int count = config->width * config->height * (config->bpp/8);
+	memset(config->base, 0, count);
+}
+
+void fbcon_draw_pixel(unsigned int x, unsigned int y, uint32_t color) 
+{
+	if((x > (config->width - 1)) || (y > (config->height)))
+		return;
+
+	long location = x * (config->bpp/8) + y * config->width * (config->bpp/8);
+
+	/*BGR*/
+	*((uint8_t *)config->base + location + 0) = ((color >> 0) & 0xff);
+	*((uint8_t *)config->base + location + 1) = ((color >> 8)  & 0xff);
+	*((uint8_t *)config->base + location + 2) = ((color >> 16)  & 0xff);
+}
+
+void fbcon_draw_horizontal_line(unsigned int x1, unsigned int x2, unsigned int y, uint32_t color) 
+{
+	if(x1 > x2)
+		return;
+
+	unsigned int i;
+	for (i = x1; i < x2; i++)
+		fbcon_draw_pixel(i, y, color);
+}
+
+void fbcon_draw_vertical_line(unsigned int x, unsigned int y1, unsigned int y2, uint32_t color) 
+{
+	if(y1 > y2)
+		return;
+
+	unsigned int i;
+	for (i = y1; i < y2;i++)
+		fbcon_draw_pixel(x, i, color);
+}
+
+void fbcon_draw_rectangle(unsigned int x1, unsigned int y1, unsigned int width, unsigned int height, uint32_t color) 
+{
+	unsigned int x2 = x1 + width;
+	unsigned int y2 = y1 + height;
+
+	fbcon_draw_horizontal_line(x1, x2, y1, color);
+	fbcon_draw_horizontal_line(x1, x2, y2, color);
+	fbcon_draw_vertical_line(x1, y1, y2, color);
+	fbcon_draw_vertical_line(x2, y1, y2, color);
+}
+
+void fbcon_draw_filled_rectangle(unsigned int x, unsigned int y, unsigned int width, unsigned int height, uint32_t color) {
+	unsigned int i;
+	unsigned int j;
+	
+	for(j = y; j < y + height; j++) {
+		for(i = x; i < x + width; i++) {
+			fbcon_draw_pixel(i, j, color);
+		}
+	}
+}
+
+void fbcon_draw_text(unsigned int x, unsigned int y, const char *text, unsigned int scale_factor, uint32_t color)
+{
+	unsigned int i = 0;
+	
+	while (text[i] != '\0') {
+		char *pixels = config->base;
+		pixels += y * ((config->bpp / 8) * config->width);
+		pixels += (x + (i * (FONT_WIDTH + 1) * scale_factor)) * ((config->bpp / 8));
+
+		fbcon_drawglyph(pixels, color, config->stride, (config->bpp / 8), font5x12 + (text[i] - 32) * 2, scale_factor);
+		i++;
+	}
 }

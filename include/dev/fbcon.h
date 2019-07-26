@@ -98,4 +98,18 @@ void fbcon_draw_line(uint32_t type);
 uint32_t fbcon_get_current_line(void);
 uint32_t fbcon_get_current_bg(void);
 uint32_t fbcon_get_max_x(void);
+uint32_t fbcon_get_width(void);
+uint32_t fbcon_get_height(void);
+
+/* gfx */
+
+void fbcon_flush(void);
+
+void fbcon_draw_pixel(unsigned int x, unsigned int y, uint32_t color);
+void fbcon_draw_horizontal_line(unsigned int x1, unsigned int x2, unsigned int y, uint32_t color);
+void fbcon_draw_vertical_line(unsigned int x, unsigned int y1, unsigned int y2, uint32_t color);
+void fbcon_draw_rectangle(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, uint32_t color);
+void fbcon_draw_filled_rectangle(unsigned int x, unsigned int y, unsigned int width, unsigned int height, uint32_t color);
+void fbcon_draw_text(unsigned int x, unsigned int y, const char *text, unsigned int scale_factor, uint32_t color);
+
 #endif /* __DEV_FBCON_H */
