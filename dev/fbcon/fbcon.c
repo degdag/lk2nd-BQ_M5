@@ -71,9 +71,6 @@ static struct fbcon_config *config = NULL;
 #define RGB888_RED              0xff0000
 #define RGB888_GREEN            0x00ff00
 
-#define FONT_WIDTH		5
-#define FONT_HEIGHT		12
-
 #define SCALE_FACTOR		2
 
 static uint32_t			BGCOLOR;

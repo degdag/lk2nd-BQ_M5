@@ -37,6 +37,9 @@
 #define LOGO_IMG_MAGIC_SIZE sizeof(LOGO_IMG_MAGIC) - 1
 #define LOGO_IMG_HEADER_SIZE 512
 
+#define FONT_WIDTH		5
+#define FONT_HEIGHT		12
+
 enum fbcon_msg_type {
 	/* type for menu */
 	FBCON_COMMON_MSG = 0,
