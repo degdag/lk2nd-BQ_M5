@@ -1,41 +1,26 @@
 #include <app.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <platform/iomap.h>
 #include <platform.h>
 
 #include <decompress.h>
 
-#include <menu_keys_detect.h>
-#include <display_menu.h>
+#include <kernel/mutex.h>
 
-#include <lib/bio.h>
 #include <lib/fs.h>
 
-#include <string.h>
+#include <dev/fbcon.h>
 
 #include "aboot.h"
 #include "bootimg.h"
 
-off_t fs_get_file_size(const char *filename) {
-	filehandle *file_handle = NULL;
-	struct file_stat file_stat;
-
-	int ret;
-
-	ret = fs_open_file(filename, &file_handle);
-	if(ret < 0)
-		return 0;
-
-	ret = fs_stat_file(file_handle, &file_stat);
-	if(ret < 0)
-		return 0;
-
-	ret = fs_close_file(file_handle);
-	if (ret < 0)
-		return 0;
-
-	return file_stat.size;
-}
+#include "menu.h"
+#include "fs_util.h"
+#include "config.h"
 
 int boot_linux_from_ext2(void) {
 	void *kernel_addr = VA((addr_t)(ABOOT_FORCE_KERNEL64_ADDR));
@@ -48,7 +33,7 @@ int boot_linux_from_ext2(void) {
 	off_t ramdisk_size = 0;
 	off_t dtb_size = 0;
 
-	int dev_null;
+	unsigned int dev_null;
 
 	printf("booting from ext2 partition 'system'\n");
 
@@ -105,20 +90,35 @@ int boot_linux_from_ext2(void) {
 	fs_unmount("/boot");
 
 	boot_linux(kernel_addr, tags_addr, (const char *)cmdline, board_machtype(), ramdisk_addr, ramdisk_size);
+
+	return -1; //something went wrong
 }
 
 void reboot_init(const struct app_descriptor *app)
 {
+	int ret;
 	bool boot_into_fastboot = aboot_start();
 
 	if (!boot_into_fastboot) {
-		boot_linux_from_ext2();
+		//boot_linux_from_ext2();
 
 		dprintf(CRITICAL, "ERROR: Booting default entry failed. Forcibly bringing up menu.\n");
 	}
 
 	fastboot_start();
-	display_fastboot_menu();
+
+	struct boot_entry *entry_list = NULL;
+	ret = parse_boot_entries(&entry_list);
+	if (ret < 0) {
+		printf("falied to parse boot entries: %d\n", ret);
+		return;
+	}
+
+	thread_t *thread = thread_create("menu_thread", &menu_thread, entry_list, DEFAULT_PRIORITY, DEFAULT_STACK_SIZE);
+	if (thread)
+		printf("thread_resume ret: %d\n", thread_resume(thread));
+	else
+		printf("`thread_create` failed\n");
 }
 
 APP_START(reboot)
