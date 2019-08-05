@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
+// © 2019 Mis012
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
