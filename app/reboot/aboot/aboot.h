@@ -8,4 +8,6 @@ void boot_linux(void *kernel, unsigned int *tags,
 		const char *cmdline, unsigned int machtype,
 		void *ramdisk, unsigned int ramdisk_size);
 
+int boot_linux_from_mmc(void);
+
 #endif

@@ -12,6 +12,8 @@
 #include <dev/fbcon.h>
 #include <target.h>
 
+#include "aboot/aboot.h"
+
 #include "boot.h"
 #include "config.h"
 
@@ -24,8 +26,12 @@ struct hardcoded_entry {
 	void (*function)(void);
 };
 
-#define HARDCODED_ENTRY_COUNT 1
+void boot_from_mmc(void);
+void boot_recovery_from_mmc(void);
+#define HARDCODED_ENTRY_COUNT 3
 struct hardcoded_entry hardcoded_entry_list[HARDCODED_ENTRY_COUNT] = {
+	{.title = "legacy boot from 'boot' partition", .function = boot_from_mmc},
+	{.title = "legacy boot from 'recovery' partition", .function = boot_recovery_from_mmc},
 	{.title = "power off", .function = shutdown_device}
 };
 
@@ -112,7 +118,6 @@ static bool handle_keys(void) {
 	}
 
 	if(power_button_pressed) {
-		printf("[***] selected option: %d\n", selected_option); //FIXME
 		if(selected_option < num_of_boot_entries) {
 			struct boot_entry *entry = entry_list + selected_option;
 			if(!entry->error) {
@@ -152,4 +157,18 @@ int menu_thread(void *arg) {
 
 		thread_sleep(KEY_DETECT_FREQUENCY);
 	}
+}
+
+// hardcoded functions
+
+extern unsigned int boot_into_recovery;
+
+void boot_from_mmc(void) {
+	boot_into_recovery = 0;
+	boot_linux_from_mmc();
+}
+
+void boot_recovery_from_mmc(void) {
+	boot_into_recovery = 1;
+	boot_linux_from_mmc();
 }
