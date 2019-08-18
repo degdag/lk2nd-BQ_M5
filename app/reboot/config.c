@@ -12,7 +12,7 @@
 
 #define ENTRIES_DIR "/boot/lk2nd/entries"
 
-int boot_entry_parse_option(char **_dest, const char *option, const char *buffer) {
+int config_parse_option(char **_dest, const char *option, const char *buffer) {
 	char *temp = strstr(buffer, option);
 	if(!temp)
 		return -1;
@@ -71,28 +71,28 @@ int parse_boot_entry_file(struct boot_entry *entry, struct dirent ent) {
 
 	buf[entry_file_size] = '\0';
 	
-	ret = boot_entry_parse_option(&entry->title, "title", (const char *)buf);
+	ret = config_parse_option(&entry->title, "title", (const char *)buf);
 	if(ret < 0) {
 		printf("SYNTAX ERROR: entry \"%s\" - no option 'title'", path);
 		free(buf);
 		return ret;
 	}
 
-	ret = boot_entry_parse_option(&entry->linux, "linux", (const char *)buf);
+	ret = config_parse_option(&entry->linux, "linux", (const char *)buf);
 	if(ret < 0) {
 		printf("SYNTAX ERROR: entry \"%s\" - no option 'linux'", path);
 		free(buf);
 		return ret;
 	}
 
-	ret = boot_entry_parse_option(&entry->initrd, "initrd", (const char *)buf);
+	ret = config_parse_option(&entry->initrd, "initrd", (const char *)buf);
 	if(ret < 0) {
 		printf("SYNTAX ERROR: entry \"%s\" - no option 'initrd'", path);
 		free(buf);
 		return ret;
 	}
 
-	ret = boot_entry_parse_option(&entry->options, "options", (const char *)buf);
+	ret = config_parse_option(&entry->options, "options", (const char *)buf);
 	if(ret < 0) {
 		printf("SYNTAX ERROR: entry \"%s\" - no option 'options'", path);
 		free(buf);
