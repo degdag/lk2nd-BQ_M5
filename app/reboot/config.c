@@ -11,6 +11,7 @@
 #include "fs_util.h"
 
 #define ENTRIES_DIR "/boot/lk2nd/entries"
+#define GLOBAL_CONFIG_FILE "/boot/lk2nd/lk2nd.conf"
 
 int config_parse_option(char **_dest, const char *option, const char *buffer) {
 	char *temp = strstr(buffer, option);
@@ -44,16 +45,16 @@ int parse_boot_entry_file(struct boot_entry *entry, struct dirent ent) {
 	strcpy(path, ENTRIES_DIR"/");
 	strcat(path, ent.name);
 
+	off_t entry_file_size = fs_get_file_size(path);
+	buf = malloc(entry_file_size + 1);
+	if(!buf)
+		return ERR_NO_MEMORY;
+
 	ret = fs_open_file(path, &entry_file_handle);
 	printf("fs_open_file ret: %d\n", ret);
 	if(ret < 0) {
 		return ret;
 	}
-
-	off_t entry_file_size = fs_get_file_size(path);
-	buf = malloc(entry_file_size + 1);
-	if(!buf)
-		return ERR_NO_MEMORY;
 
 	ret = fs_read_file(entry_file_handle, buf, 0, entry_file_size);
 	printf("fs_read_file ret: %d\n", ret);
@@ -73,28 +74,35 @@ int parse_boot_entry_file(struct boot_entry *entry, struct dirent ent) {
 	
 	ret = config_parse_option(&entry->title, "title", (const char *)buf);
 	if(ret < 0) {
-		printf("SYNTAX ERROR: entry \"%s\" - no option 'title'", path);
+		printf("SYNTAX ERROR: entry \"%s\" - no option 'title'\n", path);
 		free(buf);
 		return ret;
 	}
 
 	ret = config_parse_option(&entry->linux, "linux", (const char *)buf);
 	if(ret < 0) {
-		printf("SYNTAX ERROR: entry \"%s\" - no option 'linux'", path);
+		printf("SYNTAX ERROR: entry \"%s\" - no option 'linux'\n", path);
 		free(buf);
 		return ret;
 	}
 
 	ret = config_parse_option(&entry->initrd, "initrd", (const char *)buf);
 	if(ret < 0) {
-		printf("SYNTAX ERROR: entry \"%s\" - no option 'initrd'", path);
+		printf("SYNTAX ERROR: entry \"%s\" - no option 'initrd'\n", path);
+		free(buf);
+		return ret;
+	}
+
+	ret = config_parse_option(&entry->dtb, "dtb", (const char *)buf);
+	if(ret < 0) {
+		printf("SYNTAX ERROR: entry \"%s\" - no option 'dtb'\n", path);
 		free(buf);
 		return ret;
 	}
 
 	ret = config_parse_option(&entry->options, "options", (const char *)buf);
 	if(ret < 0) {
-		printf("SYNTAX ERROR: entry \"%s\" - no option 'options'", path);
+		printf("SYNTAX ERROR: entry \"%s\" - no option 'options'\n", path);
 		free(buf);
 		return ret;
 	}
@@ -125,12 +133,15 @@ int parse_boot_entries(struct boot_entry **_entry_list) {
 
 	ret = entry_count = dir_count_entries(ENTRIES_DIR);
 	if (ret < 0) {
+		entry_count = 0;
 		return ret;
 	}
 
 	entry_list = malloc(entry_count * sizeof(struct boot_entry));
-	if(!entry_list)
+	if(!entry_list) {
+		entry_count = 0;
 		return ERR_NO_MEMORY;
+	}
 
 	struct dirhandle *dirhandle;
 	struct dirent ent;
@@ -138,6 +149,7 @@ int parse_boot_entries(struct boot_entry **_entry_list) {
 	ret = fs_open_dir(ENTRIES_DIR, &dirhandle);
 	if(ret < 0) {
 		printf("fs_open_dir ret: %d\n", ret);
+		entry_count = 0;
 		return ret;
 	}
 
@@ -158,5 +170,63 @@ int parse_boot_entries(struct boot_entry **_entry_list) {
 	
 	*_entry_list = entry_list;
 	
+	return 0;
+}
+
+int parse_global_config(struct global_config *global_config) {
+	int ret;
+	filehandle *global_config_file_handle = NULL;
+	unsigned char *buf;
+
+	ret = fs_mount("/boot", "ext2", "hd1p24"); //system
+	printf("fs_mount ret: %d\n", ret);
+	if(ret) {
+		return ret;
+	}
+
+	off_t entry_file_size = fs_get_file_size(GLOBAL_CONFIG_FILE);
+	buf = malloc(entry_file_size + 1);
+	if(!buf)
+		return ERR_NO_MEMORY;
+
+	ret = fs_open_file(GLOBAL_CONFIG_FILE, &global_config_file_handle);
+	printf("fs_open_file ret: %d\n", ret);
+	if(ret < 0) {
+		return ret;
+	}
+
+	ret = fs_read_file(global_config_file_handle, buf, 0, entry_file_size);
+	printf("fs_read_file ret: %d\n", ret);
+	if(ret < 0) {
+		free(buf);
+		return ret;
+	}
+
+	ret = fs_close_file(global_config_file_handle);
+	printf("fs_close_file ret: %d\n", ret);
+	if(ret) {
+		free(buf);
+		return ret;
+	}
+
+	ret = config_parse_option(&global_config->default_entry_title, "default", (const char *)buf);
+	if(ret < 0) {
+		printf("SYNTAX ERROR: lk2nd.conf: - no option 'default'\n");
+		free(buf);
+		return ret;
+	}
+
+	char *timeout = NULL;
+	ret = config_parse_option(&timeout, "timeout", (const char *)buf);
+	if(ret < 0) {
+		printf("SYNTAX ERROR: lk2nd.conf - no option 'timeout'\n");
+		free(buf);
+		return ret;
+	}
+
+	global_config->timeout = atoi(timeout);
+
+	fs_unmount("/boot");
+
 	return 0;
 }

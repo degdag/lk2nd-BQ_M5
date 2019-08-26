@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 // © 2019 Mis012
 
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,9 +14,10 @@
 #include "aboot/aboot.h"
 #include "aboot/bootimg.h"
 
+#include "config.h"
 #include "fs_util.h"
 
-int boot_linux_from_ext2(char *kernel_path, char *ramdisk_path, char *cmdline) {
+static int boot_linux_from_ext2(char *kernel_path, char *ramdisk_path, char *dtb_path, char *cmdline) {
 	void *kernel_addr = VA((addr_t)(ABOOT_FORCE_KERNEL64_ADDR));
 	void *ramdisk_addr = VA((addr_t)(ABOOT_FORCE_RAMDISK_ADDR));
 	void *tags_addr = VA((addr_t)(ABOOT_FORCE_TAGS_ADDR));
@@ -37,18 +39,21 @@ int boot_linux_from_ext2(char *kernel_path, char *ramdisk_path, char *cmdline) {
 	kernel_raw_size = fs_get_file_size(kernel_path);
 	if(!kernel_raw_size) {
 		printf("fs_get_file_size (%s) failed\n", kernel_path);
+		fs_unmount("/boot");
 		return -1;
 	}
 	kernel_raw = ramdisk_addr; //right where the biggest possible decompressed kernel would end; sure to be out of the way
 
 	if(fs_load_file(kernel_path, kernel_raw, kernel_raw_size) < 0) {
 		printf("failed loading %s at %p\n", kernel_path, kernel_addr);
+		fs_unmount("/boot");
 		return -1;
 	}
 
 	if(is_gzip_package(kernel_raw, kernel_raw_size)) {
 		if(decompress(kernel_raw, kernel_raw_size, kernel_addr, ABOOT_FORCE_RAMDISK_ADDR - ABOOT_FORCE_KERNEL64_ADDR, &dev_null, &dev_null)) {
 			printf("kernel decompression failed\n");
+			fs_unmount("/boot");
 			return -1;
 		}
 	} else {
@@ -60,22 +65,26 @@ int boot_linux_from_ext2(char *kernel_path, char *ramdisk_path, char *cmdline) {
 	ramdisk_size = fs_get_file_size(ramdisk_path);
 	if (!ramdisk_size) {
 		printf("fs_get_file_size (%s) failed\n", ramdisk_path);
+		fs_unmount("/boot");
 		return -1;
 	}
 
 	if(fs_load_file(ramdisk_path, ramdisk_addr, ramdisk_size) < 0) {
 		printf("failed loading %s at %p\n", ramdisk_path, ramdisk_addr);
+		fs_unmount("/boot");
 		return -1;
 	}
 
-	dtb_size = fs_get_file_size("/boot/msm8916-samsung-a3u-eur.dtb");
+	dtb_size = fs_get_file_size(dtb_path);
 	if (!ramdisk_size) {
-		printf("fs_get_file_size (/boot/msm8916-samsung-a3u-eur.dtb) failed\n");
+		printf("fs_get_file_size (%s) failed\n", dtb_path);
+		fs_unmount("/boot");
 		return -1;
 	}
 
 	if(fs_load_file("/boot/msm8916-samsung-a3u-eur.dtb", tags_addr, dtb_size) < 0) {
 		printf("failed loading /boot/msm8916-samsung-a3u-eur.dtb at %p\n", tags_addr);
+		fs_unmount("/boot");
 		return -1;
 	}
 
@@ -84,4 +93,24 @@ int boot_linux_from_ext2(char *kernel_path, char *ramdisk_path, char *cmdline) {
 	boot_linux(kernel_addr, tags_addr, (const char *)cmdline, board_machtype(), ramdisk_addr, ramdisk_size);
 	
 	return -1; //something went wrong
+}
+
+int boot_to_entry(struct boot_entry *entry) {
+	if(!entry->error) {
+		char *linux = malloc(strlen("/boot/") + strlen(entry->linux) + 1);
+		char *initrd = malloc(strlen("/boot/") + strlen(entry->initrd) + 1);
+		char *dtb = malloc(strlen("/boot/") + strlen(entry->dtb) + 1);
+		
+		if (!linux || !initrd || !dtb)
+			return ERR_NO_MEMORY;
+
+		strcpy(linux, "/boot/");
+		strcat(linux, entry->linux);
+		strcpy(initrd, "/boot/");
+		strcat(initrd, entry->initrd);
+		strcpy(dtb, "/boot/");
+		strcat(dtb, entry->dtb);
+
+		return boot_linux_from_ext2(linux, initrd, dtb, entry->options); // only returns on error
+	}
 }

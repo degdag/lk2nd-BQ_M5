@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <err.h>
 
 #include <pm8x41.h>
 #include <pm8x41_hw.h>
@@ -120,20 +119,7 @@ static bool handle_keys(void) {
 	if(power_button_pressed) {
 		if(selected_option < num_of_boot_entries) {
 			struct boot_entry *entry = entry_list + selected_option;
-			if(!entry->error) {
-				char *linux = malloc(strlen("/boot/") + strlen(entry->linux) + 1);
-				char *initrd = malloc(strlen("/boot/") + strlen(entry->initrd) + 1);
-				
-				if (!linux || !initrd)
-					return ERR_NO_MEMORY;
-
-				strcpy(linux, "/boot/");
-				strcat(linux, entry->linux);
-				strcpy(initrd, "/boot/");
-				strcat(initrd, entry->initrd);
-
-				boot_linux_from_ext2(linux, initrd, entry->options);
-			}
+			boot_to_entry(entry);
 		}
 		else {
 			hardcoded_entry_list[selected_option - num_of_boot_entries].function();
