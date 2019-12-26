@@ -28,6 +28,7 @@ static int boot_linux_from_ext2(char *kernel_path, char *ramdisk_path, char *dtb
 	off_t dtb_size = 0;
 
 	unsigned int dev_null;
+	int ret;
 
 	printf("booting from ext2 partition 'system'\n");
 
@@ -51,8 +52,9 @@ static int boot_linux_from_ext2(char *kernel_path, char *ramdisk_path, char *dtb
 	}
 
 	if(is_gzip_package(kernel_raw, kernel_raw_size)) {
-		if(decompress(kernel_raw, kernel_raw_size, kernel_addr, ABOOT_FORCE_RAMDISK_ADDR - ABOOT_FORCE_KERNEL64_ADDR, &dev_null, &dev_null)) {
-			printf("kernel decompression failed\n");
+		ret = decompress(kernel_raw, kernel_raw_size, kernel_addr, ABOOT_FORCE_RAMDISK_ADDR - ABOOT_FORCE_KERNEL64_ADDR, &dev_null, &dev_null);
+		if(ret) {
+			printf("kernel decompression failed: %d\n", ret);
 			fs_unmount("/boot");
 			return -1;
 		}
@@ -91,7 +93,7 @@ static int boot_linux_from_ext2(char *kernel_path, char *ramdisk_path, char *dtb
 	fs_unmount("/boot");
 
 	boot_linux(kernel_addr, tags_addr, (const char *)cmdline, board_machtype(), ramdisk_addr, ramdisk_size);
-	
+
 	return -1; //something went wrong
 }
 
@@ -100,7 +102,7 @@ int boot_to_entry(struct boot_entry *entry) {
 		char *linux = malloc(strlen("/boot/") + strlen(entry->linux) + 1);
 		char *initrd = malloc(strlen("/boot/") + strlen(entry->initrd) + 1);
 		char *dtb = malloc(strlen("/boot/") + strlen(entry->dtb) + 1);
-		
+
 		if (!linux || !initrd || !dtb)
 			return ERR_NO_MEMORY;
 

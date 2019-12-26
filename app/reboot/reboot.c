@@ -32,7 +32,7 @@ struct boot_entry *get_entry_by_title(struct boot_entry * entry_list, char *titl
 void reboot_init(const struct app_descriptor *app)
 {
 	int ret;
-	
+
 	bool boot_into_fastboot = aboot_init();
 
 	ret = parse_global_config(&global_config);
@@ -54,7 +54,7 @@ void reboot_init(const struct app_descriptor *app)
 	if(global_config.default_entry) {
 		boot_to_entry(global_config.default_entry);
 	}
-		
+
 		dprintf(CRITICAL, "ERROR: Booting default entry failed. Forcibly bringing up menu.\n");
 	}
 

@@ -121,7 +121,7 @@ int decompress(unsigned char *in_buf, unsigned int in_len,
 	if (rc == Z_STREAM_END) {
 		rc = 0;
 	} else if (rc != Z_OK) {
-		dprintf(INFO, "uncompression error \n");
+		dprintf(INFO, "uncompression error: %d\n", rc);
 		rc = -1;
 	}
 
