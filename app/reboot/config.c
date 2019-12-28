@@ -211,17 +211,19 @@ int parse_global_config(struct global_config *global_config) {
 
 	ret = config_parse_option(&global_config->default_entry_title, "default", (const char *)buf);
 	if(ret < 0) {
-		printf("SYNTAX ERROR: lk2nd.conf: - no option 'default'\n");
-		free(buf);
-		return ret;
+		printf("WARNING: lk2nd.conf: - no option 'default'\n");
+
+		global_config->default_entry_title = NULL;
+		global_config->timeout = 0;
+
+		fs_unmount("/boot");
+		return 0;
 	}
 
 	char *timeout = NULL;
 	ret = config_parse_option(&timeout, "timeout", (const char *)buf);
 	if(ret < 0) {
 		printf("SYNTAX ERROR: lk2nd.conf - no option 'timeout'\n");
-		free(buf);
-		return ret;
 	}
 
 	global_config->timeout = atoi(timeout);

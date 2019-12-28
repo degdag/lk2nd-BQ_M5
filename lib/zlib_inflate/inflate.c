@@ -773,7 +773,7 @@ int flush;
             }
             else if (state->head != Z_NULL)
                 state->head->name = Z_NULL;
-            state->length = 0;
+           inflate( state->length = 0;
             state->mode = COMMENT;
         case COMMENT:
             if (state->flags & 0x1000) {
@@ -1230,6 +1230,7 @@ int flush;
        Note: a memory error from inflate() is non-recoverable.
      */
   inf_leave:
+	printf(">>> inflate > `%s`\n", strm->msg);
     RESTORE();
     if (state->wsize || (out != strm->avail_out && state->mode < BAD &&
             (state->mode < CHECK || flush != Z_FINISH)))
