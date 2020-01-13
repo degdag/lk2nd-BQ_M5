@@ -25,6 +25,44 @@ struct hardcoded_entry {
 	void (*function)(void);
 };
 
+//FUGLY
+#define TIMEOUT_TEXT "press volume down for boot menu"
+#define TIMEOUT_TEXT_SCALE 2
+
+extern uint32_t target_volume_down(); //used in non-FUGLY code as well; commented out there, will use this
+
+extern struct global_config global_config;
+extern bool FUGLY_boot_to_default_entry;
+
+static void handle_timeout() {
+	int i;
+	int num_iters = global_config.timeout * 1000 / 100; // times 1000 - sec to msec; divided by 100 - see "lower cpu stress"
+
+	fbcon_draw_text(20, 20, TIMEOUT_TEXT, TIMEOUT_TEXT_SCALE, 0xFF0000);
+
+	for (i = 0; i < num_iters; i++) {
+		if (target_volume_down()) {
+			fbcon_draw_text(20, 20, TIMEOUT_TEXT, TIMEOUT_TEXT_SCALE, 0x000000);
+			return; //continue to boot menu
+		}
+		thread_sleep(100); //lower cpu stress
+	}
+
+	boot_to_entry(global_config.default_entry);
+	dprintf(CRITICAL, "ERROR: Booting default entry failed. Forcibly bringing up menu.\n");
+}
+
+void FUGLY_default_boot_function() 
+{
+	if(global_config.timeout == 0) {
+		boot_to_entry(global_config.default_entry);
+		dprintf(CRITICAL, "ERROR: Booting default entry failed. Forcibly bringing up menu.\n");
+	}
+	else {
+		handle_timeout();
+	}
+}
+// end of FUGLY
 void boot_from_mmc(void);
 void boot_recovery_from_mmc(void);
 #define HARDCODED_ENTRY_COUNT 3
@@ -97,12 +135,19 @@ static void draw_menu(void) {
 #define KEY_DETECT_FREQUENCY		50
 
 extern int target_volume_up();
-extern uint32_t target_volume_down();
+//extern uint32_t target_volume_down(); //declared up top because FUGLY
 
 static bool handle_keys(void) {
 	uint32_t volume_up_pressed = target_volume_up();
 	uint32_t volume_down_pressed = target_volume_down();
 	uint32_t power_button_pressed = pm8x41_get_pwrkey_is_pressed();
+
+	//FUGLY
+	if(FUGLY_boot_to_default_entry) {
+		FUGLY_boot_to_default_entry = 0; //in case we interrupt the autoboot
+		FUGLY_default_boot_function();
+	}
+	//end of FUGLY
 
 	if(volume_up_pressed) {
 		if(selected_option > 0)

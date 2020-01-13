@@ -15,9 +15,6 @@
 #include "config.h"
 #include "menu.h"
 
-#define TIMEOUT_TEXT "press volume down for boot menu"
-#define TIMEOUT_TEXT_SCALE 3
-
 struct global_config global_config = {0};
 
 struct boot_entry *get_entry_by_title(struct boot_entry * entry_list, char *title) {
@@ -34,24 +31,7 @@ struct boot_entry *get_entry_by_title(struct boot_entry * entry_list, char *titl
 	return NULL;
 }
 
-extern uint32_t target_volume_down();
-
-void handle_timeout() {
-	int i;
-	int num_iters = global_config.timeout * 1000 / 100; // times 1000 - sec to msec; divided by 100 - see "lower cpu stress"
-
-	fbcon_draw_text(20, 20, TIMEOUT_TEXT, TIMEOUT_TEXT_SCALE, 0xFF0000);
-
-	for (i = 0; i < num_iters; i++) {
-		if (target_volume_down())
-			return; //continue to boot menu
-
-		thread_sleep(100); //lower cpu stress
-	}
-
-	boot_to_entry(global_config.default_entry);
-	dprintf(CRITICAL, "ERROR: Booting default entry failed. Forcibly bringing up menu.\n");
-}
+bool FUGLY_boot_to_default_entry = 0;
 
 void reboot_init(const struct app_descriptor *app)
 {
@@ -77,13 +57,7 @@ void reboot_init(const struct app_descriptor *app)
 	global_config.default_entry = get_entry_by_title(entry_list, global_config.default_entry_title);
 
 	if (!boot_into_fastboot && global_config.default_entry) {
-		if(global_config.timeout == 0) {
-			boot_to_entry(global_config.default_entry);
-			dprintf(CRITICAL, "ERROR: Booting default entry failed. Forcibly bringing up menu.\n");
-		}
-		else {
-			handle_timeout();
-		}
+		FUGLY_boot_to_default_entry = 1;
 	}
 
 	start_fastboot();
