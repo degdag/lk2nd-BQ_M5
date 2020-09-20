@@ -125,7 +125,7 @@ int parse_boot_entries(struct boot_entry **_entry_list) {
 
 	struct boot_entry *entry_list;
 
-	ret = fs_mount("/boot", "ext2", "hd1p24"); //system
+	ret = fs_mount("/boot", "ext2", "hd1p25"); //system
 	printf("fs_mount ret: %d\n", ret);
 	if(ret) {
 		return ret;
@@ -178,7 +178,7 @@ int parse_global_config(struct global_config *global_config) {
 	filehandle *global_config_file_handle = NULL;
 	unsigned char *buf;
 
-	ret = fs_mount("/boot", "ext2", "hd1p24"); //system
+	ret = fs_mount("/boot", "ext2", "hd1p25"); //system
 	printf("fs_mount ret: %d\n", ret);
 	if(ret) {
 		return ret;

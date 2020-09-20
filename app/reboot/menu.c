@@ -34,33 +34,27 @@ extern uint32_t target_volume_down(); //used in non-FUGLY code as well; commente
 extern struct global_config global_config;
 extern bool FUGLY_boot_to_default_entry;
 
-static void handle_timeout() {
+static void FUGLY_default_boot_function() 
+{
 	int i;
 	int num_iters = global_config.timeout * 1000 / 100; // times 1000 - sec to msec; divided by 100 - see "lower cpu stress"
 
-	fbcon_draw_text(20, 20, TIMEOUT_TEXT, TIMEOUT_TEXT_SCALE, 0xFF0000);
+	if(global_config.timeout > 0) {
+		fbcon_draw_text(20, 20, TIMEOUT_TEXT, TIMEOUT_TEXT_SCALE, 0xFF0000);
 
-	for (i = 0; i < num_iters; i++) {
-		if (target_volume_down()) {
-			fbcon_draw_text(20, 20, TIMEOUT_TEXT, TIMEOUT_TEXT_SCALE, 0x000000);
-			return; //continue to boot menu
+		for (i = 0; i < num_iters; i++) {
+			if (target_volume_down()) {
+				fbcon_draw_text(20, 20, TIMEOUT_TEXT, TIMEOUT_TEXT_SCALE, 0x000000);
+				return; //continue to boot menu
+			}
+			thread_sleep(100); //lower cpu stress
 		}
-		thread_sleep(100); //lower cpu stress
+	} else {
+		thread_sleep(100); //somehow this is needed to avoid freeze
 	}
 
 	boot_to_entry(global_config.default_entry);
 	dprintf(CRITICAL, "ERROR: Booting default entry failed. Forcibly bringing up menu.\n");
-}
-
-void FUGLY_default_boot_function() 
-{
-	if(global_config.timeout == 0) {
-		boot_to_entry(global_config.default_entry);
-		dprintf(CRITICAL, "ERROR: Booting default entry failed. Forcibly bringing up menu.\n");
-	}
-	else {
-		handle_timeout();
-	}
 }
 // end of FUGLY
 void boot_from_mmc(void);
@@ -178,7 +172,8 @@ int menu_thread(void *arg) {
 	entry_list = (struct boot_entry *)arg;
 
 	fbcon_clear();
-	draw_menu();
+	if(!FUGLY_boot_to_default_entry)
+		draw_menu();
 
 	while(1) {
 		if(handle_keys()) {

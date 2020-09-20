@@ -32,7 +32,7 @@ static int boot_linux_from_ext2(char *kernel_path, char *ramdisk_path, char *dtb
 
 	printf("booting from ext2 partition 'system'\n");
 
-	if(fs_mount("/boot", "ext2", "hd1p24")) {
+	if(fs_mount("/boot", "ext2", "hd1p25")) {
 		printf("fs_mount failed\n");
 		return -1;
 	}
@@ -84,8 +84,8 @@ static int boot_linux_from_ext2(char *kernel_path, char *ramdisk_path, char *dtb
 		return -1;
 	}
 
-	if(fs_load_file("/boot/msm8916-samsung-a3u-eur.dtb", tags_addr, dtb_size) < 0) {
-		printf("failed loading /boot/msm8916-samsung-a3u-eur.dtb at %p\n", tags_addr);
+	if(fs_load_file(dtb_path, tags_addr, dtb_size) < 0) {
+		printf("failed loading %s at %p\n", dtb_path, tags_addr);
 		fs_unmount("/boot");
 		return -1;
 	}
