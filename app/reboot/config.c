@@ -214,19 +214,27 @@ int parse_global_config(struct global_config *global_config) {
 		printf("WARNING: lk2nd.conf: - no option 'default'\n");
 
 		global_config->default_entry_title = NULL;
-		global_config->timeout = 0;
+	}
 
-		fs_unmount("/boot");
-		return 0;
+	ret = config_parse_option(&global_config->charger_entry_title, "charger", (const char *)buf);
+	if(ret < 0) {
+		printf("NOTICE: lk2nd.conf: - no option 'charger'\n");
+
+		global_config->charger_entry_title = NULL;
 	}
 
 	char *timeout = NULL;
 	ret = config_parse_option(&timeout, "timeout", (const char *)buf);
 	if(ret < 0) {
-		printf("SYNTAX ERROR: lk2nd.conf - no option 'timeout'\n");
+		printf("NOTICE: lk2nd.conf - no option 'timeout', will use 0\n");
+
+		timeout = NULL;
 	}
 
-	global_config->timeout = atoi(timeout);
+	if(timeout)
+		global_config->timeout = atoi(timeout);
+	else
+		global_config->timeout = 0;
 
 	fs_unmount("/boot");
 

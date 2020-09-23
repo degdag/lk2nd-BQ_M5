@@ -3,6 +3,7 @@
 
 struct global_config {
 	char *default_entry_title;
+	char *charger_entry_title;
 	struct boot_entry *default_entry;
 	int timeout;
 };
