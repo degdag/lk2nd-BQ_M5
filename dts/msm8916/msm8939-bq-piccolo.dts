@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
+/dts-v1/;
+
+/include/ "msm8916.dtsi"
+
+/ {
+	qcom,msm-id = <239 0>;
+	qcom,board-id = <0x1000b 5>, <0x2000b 5>;
+
+	bq-piccolo {
+		model = "BQ Aquaris M5";
+		compatible = "qcom,msm8939-qrd-skuk", "qcom,msm8939-qrd", "qcom,msm8939", "qcom,qrd","lk2nd,device";
+		lk2nd,match-cmdline = "* mdss_mdp.panel=1:dsi:0:qcom,mdss_dsi_truly_nt35695_1080p_cmd:1:none";
+	};
+};
