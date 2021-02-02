@@ -21,38 +21,7 @@ See [Chipsets](https://github.com/efidroid/projectmanagement/wiki/%5BReference%5
 page on the EFIDroid wiki for an exact mapping of LK targets to SoCs.
 
 ### Supported devices
-- Alcatel OneTouch Idol 3 (4.7) - 6039*
-- Alcatel OneTouch Idol 3 (5.5) - 6045*
-- Asus Zenfone 2 Laser (720p) - Z00L
-- Asus Zenfone 2 Laser (1080p) - Z00T
-- Asus Zenfone Max ZC550KL (2016) - Z010D
-- BQ Aquaris X5 - paella, picmt
-- Huawei Honor 5X - kiwi
-- Lenovo A6000
-- Lenovo A6010
-- Lenovo PHAB Plus - PB1-770M, PB1-770N
-- LG K10 (m216) - K420 (see notes in `dts/msm8916-lg.dts` for now)
-- Marshall London
-- Motorola Moto E (2015) - surnia
-- Motorola Moto G (2015) - osprey
-- Motorola Moto G4 Play - harpia
-- Samsung Galaxy A3 (2015) - SM-A300FU
-- Samsung Galaxy A5 (2015) - SM-A500F, SM-A500FU
-- Samsung Galaxy Grand Prime - SM-G530W
-- Samsung Galaxy J3 (2016) - SM-J3109
-- Samsung Galaxy J3 Pro - SM-J3110, SM-J3119
-- Samsung Galaxy J5 (2015) - SM-J5008, SM-J500F, SM-J500FN, SM-J500H
-- Samsung Galaxy J5 (2016) - SM-J5108, SM-J510F, SM-J510FN
-- Samsung Galaxy J7 (2015) - SM-J7008, SM-J700P
-- Samsung Galaxy On7 (2015) - SM-G6000
-- Samsung Galaxy S4 Mini Value Edition - GT-I9195I
-- Samsung Galaxy Tab 4 10.1 (2015) - SM-T533
-- Samsung Galaxy Tab A 8.0 LTE (2015) - SM-T357W
-- Samsung Galaxy Tab A 9.7 WiFi (2015) - SM-T550
-- Vodafone Smart prime 6
-- Wileyfox Swift - crackling
-- Xiaomi Mi 4i
-- Xiaomi Redmi 2 - wt86047, wt88047
+- BQ Aquaris M5
 
 ## Installation
 1. Download `lk2nd.img` (available in [Releases](https://github.com/msm8916-mainline/lk2nd/releases))
