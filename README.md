@@ -24,7 +24,7 @@ page on the EFIDroid wiki for an exact mapping of LK targets to SoCs.
 - BQ Aquaris M5
 
 ## Installation
-1. Download `lk2nd.img` (available in [Releases](https://github.com/msm8916-mainline/lk2nd/releases))
+1. Download `lk2nd.img` (available in [Releases](https://github.com/degdag/lk2nd-BQ_M5/releases/tag/1))
 2. Flash `lk2nd.img` using the stock flashing procedure:
   - Fastboot: `fastboot flash boot lk2nd.img`
   - Samsung: `heimdall flash --BOOT lk2nd.img`
